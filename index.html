@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f7a52">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<title>Mera Kharcha</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f3f5ef;--card:#fff;--ink:#1d2b24;--mute:#6a7a71;--line:#dde3da;--green:#1f7a52;--red:#c4452f;--amber:#d9962b;--soft:#e8efe6;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root{--bg:#121a16;--card:#1b261f;--ink:#e6efe9;--mute:#93a69b;--line:#2c3b32;--green:#4cc28a;--red:#ef7a64;--amber:#e8b155;--soft:#24322a;color-scheme:dark}}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:16px 14px 40px}
+h1{font-size:1.6rem;margin:0}h2{font-size:1.05rem;margin:0 0 10px}
+.sub{color:var(--mute);margin:2px 0 14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+label{display:block;font-size:.85rem;color:var(--mute);margin-bottom:3px}
+input,select,button{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:9px 11px;min-width:0}
+button{cursor:pointer;background:var(--green);color:#fff;border-color:var(--green);font-weight:600}
+button.g{background:transparent;color:var(--ink);border-color:var(--line);font-weight:500}
+button.s{padding:4px 9px;font-size:.85rem}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:end;justify-content:space-between;margin-bottom:12px}
+.g3{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-bottom:12px}
+.two{display:grid;gap:12px;grid-template-columns:1fr 1fr;margin-bottom:12px}
+.form{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));align-items:end}
+.stat b{display:block;font-size:1.6rem;line-height:1.2}.stat span,.note{color:var(--mute);font-size:.88rem}
+.pb{height:12px;border-radius:99px;background:var(--soft);overflow:hidden;margin:8px 0 4px}.pb i{display:block;height:100%;width:0;transition:width .4s}
+.cb{position:relative;height:250px}.wide{overflow-x:auto}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--mute);font-weight:500;font-size:.85rem}
+.amt{color:var(--red);font-weight:600}
+.center{text-align:center;padding-top:18vh}
+@media(max-width:720px){.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="login" class="wrap center">
+  <h1>Mera Kharcha</h1>
+  <p class="sub">Apni salary aur kharche, har device par safe.</p>
+  <button id="gbtn">Google se login karo</button>
+  <p class="note" id="lerr"></p>
+</div>
+
+<div id="app" class="wrap" hidden>
+  <div class="bar">
+    <div><h1>Mera Kharcha</h1><span class="note" id="who"></span></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="g s" id="install" hidden>App install karo</button>
+      <button class="g s" id="rem">Roz yaad dilao</button>
+      <button class="g s" id="out">Logout</button>
+    </div>
+  </div>
+
+  <div class="bar">
+    <div><label for="month">Mahina</label><input type="month" id="month"></div>
+    <div style="display:flex;gap:8px;align-items:end"><div><label for="salary">Salary (₹)</label><input type="number" id="salary" min="0"></div><button id="saveSal">Save</button></div>
+  </div>
+
+  <div class="g3">
+    <div class="card stat"><span>Salary</span><b id="sSal"></b></div>
+    <div class="card stat"><span>Kharcha hua</span><b id="sSpent"></b></div>
+    <div class="card stat"><span>Bacha hua</span><b id="sLeft"></b></div>
+  </div>
+  <div class="card"><div style="display:flex;justify-content:space-between"><span>Salary ka use</span><b id="pct"></b></div><div class="pb"><i id="fill"></i></div><span class="note" id="perDay"></span></div>
+
+  <div class="card"><h2>Naya kharcha</h2>
+    <div class="form">
+      <div><label for="amt">Amount (₹)</label><input type="number" id="amt" min="1"></div>
+      <div><label for="cat">Category</label><select id="cat"><option>Khana</option><option>Kiraya</option><option>Travel</option><option>Bill</option><option>Shopping</option><option>Sehat</option><option>Padhai</option><option>Ghoomna</option><option>EMI</option><option>Baaki</option></select></div>
+      <div><label for="date">Date</label><input type="date" id="date"></div>
+      <div><label for="note">Wajah / note</label><input id="note"></div>
+      <button id="add">Add karo</button>
+    </div>
+  </div>
+
+  <div class="two">
+    <div class="card"><h2>Category ke hisaab se</h2><div class="cb"><canvas id="pie"></canvas></div></div>
+    <div class="card"><h2>Roz ka kharcha</h2><div class="cb"><canvas id="bars"></canvas></div></div>
+  </div>
+
+  <div class="card"><h2>Data upload (CSV)</h2>
+    <p class="note">Columns is order me: <b>date, amount, category, note</b> (date: 2026-10-16). Pehli line header ho sakti hai.</p>
+    <input type="file" id="csv" accept=".csv,text/csv"> <span class="note" id="csvMsg"></span>
+  </div>
+
+  <div class="card"><h2>Kharche ki list</h2>
+    <div class="wide"><table><thead><tr><th>Date</th><th>Category</th><th>Note</th><th>Amount</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+    <p class="note" id="empty">Is mahine koi kharcha nahi.</p>
+  </div>
+</div>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {getFirestore,collection,addDoc,deleteDoc,doc,setDoc,onSnapshot,query,orderBy,writeBatch,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {getMessaging,getToken} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
+
+const firebaseConfig={apiKey:"AIzaSyBV9wZhtbb3hZeZI6Rh0OoDxr0d6VC4PU8",authDomain:"salerymaneger.firebaseapp.com",projectId:"salerymaneger",storageBucket:"salerymaneger.firebasestorage.app",messagingSenderId:"434694136496",appId:"1:434694136496:web:a1a39c3de27c4b1855d175",measurementId:"G-TZRCCLQQED"};
+// Background push ke liye: Firebase Console > Project settings > Cloud Messaging > Web Push certificates se key yahan daalo
+const VAPID_KEY="";
+const REMIND_TIME="20:00"; // app khula ho tab ka local reminder
+
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+const $=id=>document.getElementById(id),pad=n=>String(n).padStart(2,"0");
+const inr=n=>"₹"+Math.round(n).toLocaleString("en-IN");
+const esc=s=>String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const t=new Date(),ymd=`${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}`;
+$("month").value=ymd.slice(0,7);$("date").value=ymd;
+let uid,exp=[],sal={},pie,bars,unsubs=[];
+const COL=["#1f7a52","#d9962b","#c4452f","#3b7ea1","#8a5fb3","#5aa469","#e07b53","#6b7f91","#b8a13a","#a05a7a"];
+
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js");
+let dip;addEventListener("beforeinstallprompt",e=>{e.preventDefault();dip=e;$("install").hidden=false});
+$("install").onclick=async()=>{if(!dip)return;dip.prompt();await dip.userChoice;dip=null;$("install").hidden=true};
+
+$("gbtn").onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>$("lerr").textContent="Login fail: "+e.code);
+$("out").onclick=()=>signOut(auth);
+onAuthStateChanged(auth,u=>{
+  unsubs.forEach(f=>f());unsubs=[];
+  $("login").hidden=!!u;$("app").hidden=!u;if(!u)return;
+  uid=u.uid;$("who").textContent=u.displayName||u.email;
+  unsubs.push(onSnapshot(query(collection(db,"users",uid,"expenses"),orderBy("date","desc")),s=>{exp=s.docs.map(d=>({id:d.id,...d.data()}));render()}));
+  unsubs.push(onSnapshot(doc(db,"users",uid,"settings","salary"),s=>{sal=s.data()||{};render()}));
+});
+
+function render(){
+  const m=$("month").value,s=sal[m]||0,list=exp.filter(e=>e.date.startsWith(m)),sp=list.reduce((a,e)=>a+e.amt,0),left=s-sp;
+  if(document.activeElement!==$("salary"))$("salary").value=s||"";
+  $("sSal").textContent=inr(s);$("sSpent").textContent=inr(sp);$("sLeft").textContent=inr(left);
+  $("sLeft").style.color=left<0?"var(--red)":"var(--green)";
+  const p=s?sp/s*100:0;$("pct").textContent=Math.round(p)+"%";
+  const f=$("fill");f.style.width=Math.min(100,p)+"%";f.style.background=p>=100?"var(--red)":p>=80?"var(--amber)":"var(--green)";
+  const [y,mo]=m.split("-").map(Number),dim=new Date(y,mo,0).getDate(),now=y===t.getFullYear()&&mo===t.getMonth()+1,dl=now?dim-t.getDate()+1:dim;
+  $("perDay").textContent=s&&left>0?`Roz ka limit: ${inr(left/dl)} (${dl} din baaki)`:(s&&left<0?`Budget se ${inr(-left)} zyada kharch ho gaya`:"");
+  $("rows").innerHTML=list.map(e=>`<tr><td>${e.date.split("-").reverse().join("/")}</td><td>${esc(e.cat)}</td><td>${esc(e.note)}</td><td class="amt">${inr(e.amt)}</td><td><button class="g s" data-id="${e.id}">Hatao</button></td></tr>`).join("");
+  $("empty").hidden=list.length>0;
+  const bc={};list.forEach(e=>bc[e.cat]=(bc[e.cat]||0)+e.amt);const cs=Object.keys(bc),tc=getComputedStyle(document.documentElement).getPropertyValue("--mute").trim();
+  pie&&pie.destroy();pie=new Chart($("pie"),{type:"doughnut",data:{labels:cs,datasets:[{data:cs.map(c=>bc[c]),backgroundColor:COL,borderWidth:0}]},options:{maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{color:tc}},tooltip:{callbacks:{label:c=>` ${c.label}: ${inr(c.parsed)}`}}}}});
+  const d=Array(dim).fill(0);list.forEach(e=>d[+e.date.slice(8)-1]+=e.amt);
+  bars&&bars.destroy();bars=new Chart($("bars"),{type:"bar",data:{labels:d.map((_,i)=>i+1),datasets:[{data:d,backgroundColor:"#1f7a52",borderRadius:3}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" "+inr(c.parsed.y)}}},scales:{x:{ticks:{color:tc},grid:{display:false}},y:{ticks:{color:tc},beginAtZero:true}}}});
+}
+$("month").onchange=render;
+$("saveSal").onclick=()=>setDoc(doc(db,"users",uid,"settings","salary"),{[$("month").value]:+$("salary").value||0},{merge:true});
+$("add").onclick=async()=>{const a=+$("amt").value;if(!(a>0))return $("amt").focus();
+  const date=$("date").value||ymd;
+  await addDoc(collection(db,"users",uid,"expenses"),{amt:a,cat:$("cat").value,date,note:$("note").value.trim(),at:serverTimestamp()});
+  $("amt").value="";$("note").value="";$("month").value=date.slice(0,7);render()};
+$("rows").onclick=e=>{const id=e.target.dataset.id;if(id&&confirm("Ye kharcha hata dein?"))deleteDoc(doc(db,"users",uid,"expenses",id))};
+
+$("csv").onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  const rows=(await f.text()).split(/\r?\n/).map(l=>l.split(",").map(x=>x.trim())).filter(r=>/^\d{4}-\d{2}-\d{2}$/.test(r[0])&&+r[1]>0);
+  for(let i=0;i<rows.length;i+=400){const b=writeBatch(db);
+    rows.slice(i,i+400).forEach(r=>b.set(doc(collection(db,"users",uid,"expenses")),{date:r[0],amt:+r[1],cat:r[2]||"Baaki",note:r.slice(3).join(",")||"",at:serverTimestamp()}));
+    await b.commit()}
+  $("csvMsg").textContent=rows.length+" kharche upload ho gaye.";e.target.value="";
+};
+
+$("rem").onclick=async()=>{
+  if(!("Notification" in window))return alert("Is browser me notification support nahi hai.");
+  if(await Notification.requestPermission()!=="granted")return alert("Notification allow karo, tabhi yaad dila sakte hain.");
+  const reg=await navigator.serviceWorker.ready;
+  if(VAPID_KEY){
+    try{const tk=await getToken(getMessaging(app),{vapidKey:VAPID_KEY,serviceWorkerRegistration:reg});
+      await setDoc(doc(db,"tokens",tk),{uid,at:serverTimestamp()});alert("Roz shaam 8 baje yaad dilayenge.")}catch(e){alert("Reminder set nahi hua: "+e.message)}
+  }else{localStorage.remOn="1";alert("Reminder on hai (app khula ho tab "+REMIND_TIME+" par). Band app me bhi chahiye to VAPID_KEY set karo.")}
+};
+setInterval(async()=>{
+  if(localStorage.remOn!=="1"||Notification.permission!=="granted")return;
+  const n=new Date(),hm=pad(n.getHours())+":"+pad(n.getMinutes());
+  if(hm>=REMIND_TIME&&localStorage.remLast!==ymd){localStorage.remLast=ymd;(await navigator.serviceWorker.ready).showNotification("Aaj ka kharcha likha?",{body:"2 minute nikaal ke kharche daal do.",icon:"icon-192.png"})}
+},30000);
+</script>
+</body>
+</html>
