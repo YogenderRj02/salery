@@ -43,6 +43,7 @@ nav button{flex:1;background:none;color:var(--mute);border-radius:0;padding:9px 
 #fab{position:fixed;right:18px;bottom:calc(74px + env(safe-area-inset-bottom,0px));width:56px;height:56px;border-radius:50%;font-size:1.8rem;padding:0;box-shadow:0 6px 16px rgba(0,0,0,.28);z-index:6}
 dialog{border:0;border-radius:18px;background:var(--card);width:min(420px,92vw);padding:16px}dialog::backdrop{background:rgba(0,0,0,.5)}
 .seg{display:flex;background:var(--soft);border-radius:10px;padding:3px}.seg button{flex:1;background:transparent;color:var(--mute)}.seg button.on{background:var(--g);color:#fff}
+.bd{font-size:.7rem;padding:2px 8px;border-radius:99px;font-weight:600;margin-left:4px}.bd.l{background:rgba(196,69,47,.15);color:var(--red)}.bd.t{background:rgba(217,150,43,.22);color:var(--amb)}.bd.o{background:var(--soft);color:var(--mute)}
 .center{text-align:center;padding-top:20vh}
 </style>
 </head>
@@ -58,6 +59,7 @@ dialog{border:0;border-radius:18px;background:var(--card);width:min(420px,92vw);
       <div class="pb"><i id="hFill" style="background:#fff"></i></div>
       <div class="row"><div><small>Income</small><div id="hInc"></div></div><div><small>Kharcha</small><div id="hSp"></div></div><div><small>Bachat</small><div id="hSav"></div></div></div></div>
     <div class="tip" id="tip"></div>
+    <div class="card" id="uHome" hidden><h2>🔔 Aaj / late udhar</h2><div id="uHomeL"></div></div>
     <div class="row" style="margin-bottom:12px"><div class="chip"><small>Roz ka limit</small><b id="cDay"></b></div><div class="chip"><small>Pichle mahine se</small><b id="cCmp"></b></div></div>
     <div class="card" id="budCard"><h2>Category budget</h2><div id="budList"></div></div>
     <div class="card"><h2>Haal ki entries</h2><div id="recent"></div></div>
@@ -66,6 +68,12 @@ dialog{border:0;border-radius:18px;background:var(--card);width:min(420px,92vw);
   <section id="t-list" hidden>
     <div class="grid" style="margin-bottom:12px"><input id="q" placeholder="🔍 Search..."><select id="fc"><option value="">Saari category</option></select></div>
     <div class="card" id="all"></div>
+  </section>
+
+  <section id="t-udh" hidden>
+    <div class="row" style="margin-bottom:12px"><div class="chip"><small>Mujhe lene hain</small><b class="pos" id="uGet"></b></div><div class="chip"><small>Mujhe dene hain</small><b class="neg" id="uGive"></b></div></div>
+    <div class="card"><h2>Baaki udhar</h2><div id="uOpen"></div></div>
+    <div class="card"><h2>Chuke hue</h2><div id="uDone"></div></div>
   </section>
 
   <section id="t-rep" hidden>
@@ -83,7 +91,7 @@ dialog{border:0;border-radius:18px;background:var(--card);width:min(420px,92vw);
   </section>
 </div>
 <button id="fab" aria-label="Add">+</button>
-<nav><button data-t="home" class="on"><b>🏠</b>Home</button><button data-t="list"><b>🧾</b>Kharche</button><button data-t="rep"><b>📊</b>Report</button><button data-t="set"><b>⚙️</b>Setting</button></nav>
+<nav><button data-t="home" class="on"><b>🏠</b>Home</button><button data-t="list"><b>🧾</b>Kharche</button><button data-t="udh"><b>🤝</b>Udhar</button><button data-t="rep"><b>📊</b>Report</button><button data-t="set"><b>⚙️</b>Setting</button></nav>
 </div>
 
 <dialog id="dlg">
@@ -95,6 +103,17 @@ dialog{border:0;border-radius:18px;background:var(--card);width:min(420px,92vw);
   <label for="dnote">Wajah / note</label><input id="dnote">
   <div class="row" style="margin-top:16px"><button class="g" id="dcancel">Cancel</button><button id="dsave">Save</button></div>
   <button class="r" id="ddel" style="width:100%;margin-top:6px">Ye entry hatao</button>
+</dialog>
+
+<dialog id="udlg">
+  <h2 id="udt"></h2>
+  <div class="seg"><button id="ug" class="on">Maine diye</button><button id="ut">Maine liye</button></div>
+  <label for="uname">Kiska naam</label><input id="uname">
+  <label for="uamt">Amount (₹)</label><input type="number" id="uamt" min="1" inputmode="decimal">
+  <label for="udue">Kab dene / lene ka bola hai</label><input type="date" id="udue">
+  <label for="unote">Note</label><input id="unote" placeholder="optional">
+  <div class="row" style="margin-top:16px"><button class="g" id="ucancel">Cancel</button><button id="usave">Save</button></div>
+  <button class="r" id="udel" style="width:100%;margin-top:6px" hidden>Ye udhar hatao</button>
 </dialog>
 
 <script type="module">
@@ -114,7 +133,7 @@ const esc=s=>String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&g
 const t=new Date(),ymd=`${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}`;
 const EM={Khana:"🍛",Kiraya:"🏠",Travel:"🚌",Bill:"💡",Shopping:"🛍️",Sehat:"💊",Padhai:"📚",Ghoomna:"🏖️",EMI:"🏦",Baaki:"📦",Income:"💰"};
 const CATS=Object.keys(EM).filter(c=>c!=="Income"),COL=["#1f7a52","#d9962b","#c4452f","#3b7ea1","#8a5fb3","#5aa469","#e07b53","#6b7f91","#b8a13a","#a05a7a"];
-let uid,exp=[],sal={},bud={},mon=ymd.slice(0,7),tab="home",editId=null,pie,bars,unsubs=[],isInc=false;
+let ud=[],uid,exp=[],sal={},bud={},mon=ymd.slice(0,7),tab="home",editId=null,pie,bars,unsubs=[],isInc=false;
 
 // theme
 document.documentElement.dataset.theme=localStorage.theme||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
@@ -137,6 +156,7 @@ onAuthStateChanged(auth,u=>{
   unsubs.forEach(f=>f());unsubs=[];$("login").hidden=!!u;$("app").hidden=!u;if(!u)return;
   uid=u.uid;$("who").textContent=u.email||"";$("hi").textContent="Namaste, "+(u.displayName||"dost").split(" ")[0]+" 👋";
   unsubs.push(onSnapshot(query(collection(db,"users",uid,"expenses"),orderBy("date","desc")),s=>{exp=s.docs.map(d=>({id:d.id,...d.data()}));render()}));
+  unsubs.push(onSnapshot(query(collection(db,"users",uid,"udhar"),orderBy("due")),s=>{ud=s.docs.map(d=>({id:d.id,...d.data()}));render()}));
   unsubs.push(onSnapshot(doc(db,"users",uid,"settings","salary"),s=>{sal=s.data()||{};render()}));
   unsubs.push(onSnapshot(doc(db,"users",uid,"settings","budgets"),s=>{bud=s.data()||{};render()}));
 });
@@ -146,7 +166,7 @@ const shift=d=>{const[y,m]=mon.split("-").map(Number),n=new Date(y,m-1+d,1);mon=
 $("pm").onclick=()=>shift(-1);$("nm").onclick=()=>shift(1);
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.t;
   document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));
-  ["home","list","rep","set"].forEach(k=>$("t-"+k).hidden=k!==tab);$("fab").hidden=tab==="set";render()});
+  ["home","list","udh","rep","set"].forEach(k=>$("t-"+k).hidden=k!==tab);$("fab").hidden=tab==="set";render()});
 $("q").oninput=render;$("fc").onchange=render;
 
 const item=e=>`<div class="it" data-id="${e.id}"><div class="ic">${EM[e.cat]||"📦"}</div><div class="m"><div class="t">${esc(e.cat)}</div><div class="d note">${esc(e.note)||"—"} · ${e.date.slice(8)}/${e.date.slice(5,7)} · ${esc(e.mode||"")}</div></div><div class="${e.type==="inc"?"pos":"neg"}">${e.type==="inc"?"+":"-"}${inr(e.amt)}</div></div>`;
@@ -154,6 +174,7 @@ const pv=()=>{const[y,m]=mon.split("-").map(Number),n=new Date(y,m-2,1);return n
 
 function render(){
   if(!uid)return;
+  renderU();
   const L=exp.filter(e=>e.date.startsWith(mon)),X=L.filter(e=>e.type!=="inc"),I=L.filter(e=>e.type==="inc");
   const s=sal[mon]||0,income=s+sum(I),sp=sum(X),left=income-sp,p=income?sp/income*100:0;
   $("ml").textContent=new Date(mon+"-01").toLocaleDateString("en-IN",{month:"short",year:"numeric"});
@@ -194,13 +215,43 @@ $("bx").onclick=()=>setType(false);$("bi").onclick=()=>setType(true);
 function openD(e){editId=e?e.id:null;$("dt").textContent=e?"Entry badlo":"Nayi entry";setType(!!e&&e.type==="inc");
   $("damt").value=e?e.amt:"";$("dcat").value=e&&e.cat!=="Income"?e.cat:"Khana";$("ddate").value=e?e.date:(mon===ymd.slice(0,7)?ymd:mon+"-01");
   $("dmode").value=(e&&e.mode)||"UPI";$("dnote").value=e?e.note||"":"";$("ddel").hidden=!e;$("dlg").showModal()}
-$("fab").onclick=()=>openD();$("dcancel").onclick=()=>$("dlg").close();
+$("fab").onclick=()=>tab==="udh"?openU():openD();$("dcancel").onclick=()=>$("dlg").close();
 document.body.addEventListener("click",ev=>{const it=ev.target.closest(".it[data-id]");if(it)openD(exp.find(e=>e.id===it.dataset.id))});
 $("dsave").onclick=async()=>{const a=+$("damt").value;if(!(a>0))return $("damt").focus();
   const d={amt:a,type:isInc?"inc":"exp",cat:isInc?"Income":$("dcat").value,date:$("ddate").value||ymd,mode:$("dmode").value,note:$("dnote").value.trim()},c=collection(db,"users",uid,"expenses");
   editId?await updateDoc(doc(c,editId),d):await addDoc(c,{...d,at:serverTimestamp()});
   mon=d.date.slice(0,7);$("dlg").close();render()};
 $("ddel").onclick=async()=>{if(confirm("Ye entry hata dein?")){await deleteDoc(doc(db,"users",uid,"expenses",editId));$("dlg").close()}};
+
+// udhar
+const dd=x=>Math.round((new Date(x)-new Date(ymd))/864e5);
+const uItem=u=>{const d=u.due?dd(u.due):null,b=u.paid?'<span class="bd o">Ho gaya</span>':d===null?'<span class="bd o">Date nahi</span>':d<0?`<span class="bd l">${-d} din late</span>`:d===0?'<span class="bd t">Aaj</span>':`<span class="bd o">${d} din baaki</span>`,g=u.dir==="gave";
+  return `<div class="it" data-u="${u.id}"><div class="ic">${g?"📤":"📥"}</div><div class="m"><div class="t">${esc(u.name)}${b}</div><div class="d note">${g?"Isse lene hain":"Ye dene hain"}${u.due?" · "+u.due.split("-").reverse().join("/"):""}${u.note?" · "+esc(u.note):""}</div></div><div style="text-align:right"><div class="${g?"pos":"neg"}">${inr(u.amt)}</div>${u.paid?"":`<button class="g" data-p="${u.id}" style="padding:3px 8px;font-size:.75rem;margin-top:3px">${g?"Mil gaya":"Chuka diya"}</button>`}</div></div>`};
+function renderU(){
+  const op=ud.filter(u=>!u.paid).sort((a,b)=>(a.due||"9").localeCompare(b.due||"9")),dn=ud.filter(u=>u.paid);
+  $("uGet").textContent=inr(sum(op.filter(u=>u.dir==="gave")));$("uGive").textContent=inr(sum(op.filter(u=>u.dir==="took")));
+  $("uOpen").innerHTML=op.map(uItem).join("")||'<p class="note">Koi udhar baaki nahi. + dabake jodo.</p>';
+  $("uDone").innerHTML=dn.slice(0,15).map(uItem).join("")||'<p class="note">Abhi kuch nahi.</p>';
+  const due=op.filter(u=>u.due&&u.due<=ymd);$("uHome").hidden=!due.length;$("uHomeL").innerHTML=due.map(uItem).join("");notifyU(due);
+}
+async function notifyU(due){
+  if(!due.length||!("Notification" in window)||Notification.permission!=="granted"||localStorage.udLast===ymd||VAPID_KEY)return;
+  localStorage.udLast=ymd;const g=due.filter(u=>u.dir==="gave"),k=due.filter(u=>u.dir==="took"),f=a=>a.map(u=>u.name+" "+inr(u.amt)).join(", ");
+  const b=[g.length?"Lene hain: "+f(g):"",k.length?"Dene hain: "+f(k):""].filter(Boolean).join(" | ");
+  (await navigator.serviceWorker.ready).showNotification("🔔 Aaj udhar ka din",{body:b,icon:"icon-192.png",tag:"udhar"});
+}
+let uEdit=null,uGave=true;
+const setU=g=>{uGave=g;$("ug").classList.toggle("on",g);$("ut").classList.toggle("on",!g)};
+$("ug").onclick=()=>setU(true);$("ut").onclick=()=>setU(false);
+function openU(u){uEdit=u?u.id:null;$("udt").textContent=u?"Udhar badlo":"Naya udhar";setU(!u||u.dir==="gave");$("uname").value=u?u.name:"";$("uamt").value=u?u.amt:"";$("udue").value=u?u.due||"":"";$("unote").value=u?u.note||"":"";$("udel").hidden=!u;$("udlg").showModal()}
+$("ucancel").onclick=()=>$("udlg").close();
+$("usave").onclick=async()=>{const a=+$("uamt").value,n=$("uname").value.trim();if(!n)return $("uname").focus();if(!(a>0))return $("uamt").focus();
+  const d={name:n,amt:a,dir:uGave?"gave":"took",due:$("udue").value,note:$("unote").value.trim()},c=collection(db,"users",uid,"udhar");
+  uEdit?await updateDoc(doc(c,uEdit),d):await addDoc(c,{...d,paid:false,at:serverTimestamp()});$("udlg").close()};
+$("udel").onclick=async()=>{if(confirm("Ye udhar hata dein?")){await deleteDoc(doc(db,"users",uid,"udhar",uEdit));$("udlg").close()}};
+document.body.addEventListener("click",async ev=>{const p=ev.target.dataset.p;
+  if(p){await updateDoc(doc(db,"users",uid,"udhar",p),{paid:true,paidOn:ymd});return}
+  const it=ev.target.closest(".it[data-u]");if(it)openU(ud.find(x=>x.id===it.dataset.u))});
 
 // settings
 $("saveSal").onclick=async()=>{await setDoc(doc(db,"users",uid,"settings","salary"),{[mon]:+$("salary").value||0},{merge:true});alert("Salary save ho gayi")};
