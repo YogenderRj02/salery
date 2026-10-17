@@ -325,7 +325,7 @@ function people(){const m={};ud.forEach(u=>{const k=nk(u.name);(m[k]=m[k]||{k,n:
     return{...x,op,get,give,net:get-give,due:ds[0]||""}})}
 function renderU(){
   const P=people(),all=ud.filter(u=>rem(u)>0);
-  $("uGet").textContent=inr(sr(all.filter(u=>u.dir==="gave")));$("uGive").textContent=inr(sr(all.filter(u=>u.dir==="took")));
+  $("uGet").textContent=inr(P.reduce((a,x)=>a+Math.max(0,x.net),0));$("uGive").textContent=inr(P.reduce((a,x)=>a+Math.max(0,-x.net),0));
   const pRow=x=>{const d=x.due?dd(x.due):null;
     return `<div class="it" data-pk="${esc(x.k)}"><div class="ic" style="font-weight:700;background:hsl(${([...x.k].reduce((a,c)=>a+c.charCodeAt(0),0)*37)%360} 45% 42%);color:#fff;border-radius:50%">${esc((x.n.trim()[0]||"?").toUpperCase())}</div><div class="m"><div class="t">${esc(x.n)}${d!==null&&d<0?'<span class="bd l">'+tx("late")+'</span>':d===0?'<span class="bd t">'+tx("Aaj")+'</span>':""}</div><div class="d note">${tx("{0} entry",x.L.length)}${x.due?" · "+tx("agli date {0}",fmt(x.due)):""}</div></div><div style="text-align:right">${x.net>0?`<div class="pos">${inr(x.net)}</div><small>${tx("lene hain")}</small>`:x.net<0?`<div class="neg">${inr(-x.net)}</div><small>${tx("dene hain")}</small>`:"<small>"+tx("Barabar ✔")+"</small>"}</div></div>`};
   $("uPeople").innerHTML=P.sort((a,b)=>(!!b.op.length-!!a.op.length)||byDue(a,b)).map(pRow).join("")||'<p class="note">'+tx('Abhi koi nahi. "Naya vyakti jodo" dabao.')+'</p>';
@@ -333,7 +333,7 @@ function renderU(){
   if(curP){const x=P.find(y=>y.k===curP),L=x?x.L:[],nm=x?x.n:curN,get=x?x.get:0,give=x?x.give:0,net=get-give;
     $("pWho").textContent=net>0?tx("{0} se total lene hain",nm):net<0?tx("{0} ko total dene hain",nm):tx("{0} – hisaab barabar",nm);
     $("pAmt").textContent=inr(Math.abs(net));$("uPer").querySelector(".hero").style.background=net<0?"linear-gradient(135deg,#c4452f,#7e2616)":"";
-    $("pSub").textContent=tx("Lene {0} · Dene {1} · {2} entry",inr(get),inr(give),L.length);
+    $("pSub").textContent=tx("{0} entry",L.length);
     $("uOpen").innerHTML=L.filter(u=>rem(u)>0).sort(byDue).map(u=>uItem(u,1)).join("")||'<p class="note">'+tx("Koi baaki entry nahi. Neeche + dabake jodo.")+'</p>';
     $("uDone").innerHTML=L.filter(u=>!rem(u)).map(u=>uItem(u,1)).join("")||'<p class="note">'+tx("Abhi kuch nahi.")+'</p>';
     const h=L.flatMap(u=>(u.pays||[]).map(y=>({...y,g:u.dir==="gave"}))).sort((a,b)=>b.d.localeCompare(a.d));
