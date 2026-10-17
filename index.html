@@ -71,9 +71,18 @@ dialog{border:0;border-radius:18px;background:var(--card);width:min(420px,92vw);
   </section>
 
   <section id="t-udh" hidden>
-    <div class="row" style="margin-bottom:12px"><div class="chip"><small>Mujhe lene hain</small><b class="pos" id="uGet"></b></div><div class="chip"><small>Mujhe dene hain</small><b class="neg" id="uGive"></b></div></div>
-    <div class="card"><h2>Baaki udhar</h2><div id="uOpen"></div></div>
-    <div class="card"><h2>Chuke hue</h2><div id="uDone"></div></div>
+    <div id="uList">
+      <div class="row" style="margin-bottom:12px"><div class="chip"><small>Mujhe lene hain</small><b class="pos" id="uGet"></b></div><div class="chip"><small>Mujhe dene hain</small><b class="neg" id="uGive"></b></div></div>
+      <button id="nvb" style="width:100%;margin-bottom:12px">➕ Naya vyakti jodo</button>
+      <div class="card"><h2>Kinse lena-dena hai</h2><div id="uPeople"></div></div>
+    </div>
+    <div id="uPer" hidden>
+      <button class="g" id="pback" style="margin-bottom:12px">‹ Wapas</button>
+      <div class="card hero"><small id="pWho"></small><div class="big" id="pAmt"></div><small id="pSub"></small></div>
+      <div class="card"><h2>Baaki entries</h2><div id="uOpen"></div></div>
+      <div class="card"><h2>Chuke hue</h2><div id="uDone"></div></div>
+      <p class="note" id="ph"></p>
+    </div>
   </section>
 
   <section id="t-rep" hidden>
@@ -108,7 +117,7 @@ dialog{border:0;border-radius:18px;background:var(--card);width:min(420px,92vw);
 <dialog id="udlg">
   <h2 id="udt"></h2>
   <div class="seg"><button id="ug" class="on">Maine diye</button><button id="ut">Maine liye</button></div>
-  <label for="uname">Kiska naam</label><div class="row"><input id="uname" list="unames" autocomplete="off"><button class="g" id="ucon" style="flex:none" aria-label="Contact chuno">📇</button></div><datalist id="unames"></datalist>
+  
   <label for="uamt">Amount (₹)</label><input type="number" id="uamt" min="1" inputmode="decimal">
   <label for="udue">Kab dene / lene ka bola hai</label><input type="date" id="udue">
   <label for="unote">Note</label><input id="unote" placeholder="optional">
@@ -116,15 +125,12 @@ dialog{border:0;border-radius:18px;background:var(--card);width:min(420px,92vw);
   <button class="r" id="udel" style="width:100%;margin-top:6px" hidden>Ye udhar hatao</button>
 </dialog>
 
+<dialog id="nvdlg"><h2>Naya vyakti</h2><label for="nvname">Naam</label><div class="row"><input id="nvname" autocomplete="off"><button class="g" id="ucon" style="flex:none" aria-label="Contact chuno">📇</button></div><div class="row" style="margin-top:16px"><button class="g" id="nvcancel">Cancel</button><button id="nvgo">Aage badho</button></div></dialog>
 <dialog id="pydlg">
   <h2 id="pyt"></h2><p class="note" id="pyi"></p>
   <label for="pya">Kitne paise</label><input type="number" id="pya" min="1" inputmode="decimal">
   <button class="g" id="pyall" style="width:100%;margin-top:8px"></button>
   <div class="row" style="margin-top:14px"><button class="g" id="pyc">Cancel</button><button id="pys">Save</button></div>
-</dialog>
-<dialog id="pdlg">
-  <h2 id="pnm"></h2><div class="tip" id="psum"></div><div id="pl"></div><p class="note" id="ph"></p>
-  <button class="g" id="pcl" style="width:100%;margin-top:10px">Band karo</button>
 </dialog>
 
 <script type="module">
@@ -175,9 +181,10 @@ onAuthStateChanged(auth,u=>{
 // navigation
 const shift=d=>{const[y,m]=mon.split("-").map(Number),n=new Date(y,m-1+d,1);mon=n.getFullYear()+"-"+pad(n.getMonth()+1);render()};
 $("pm").onclick=()=>shift(-1);$("nm").onclick=()=>shift(1);
-document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.t;
-  document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));
-  ["home","list","udh","rep","set"].forEach(k=>$("t-"+k).hidden=k!==tab);$("fab").hidden=tab==="set";render()});
+let curP=null,curN="";
+const fabVis=()=>{$("fab").hidden=tab==="set"||(tab==="udh"&&!curP)};
+const go=t=>{tab=t;document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x.dataset.t===t));["home","list","udh","rep","set"].forEach(k=>$("t-"+k).hidden=k!==t);fabVis();scrollTo(0,0);render()};
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{if(b.dataset.t==="udh")curP=null;go(b.dataset.t)});
 $("q").oninput=render;$("fc").onchange=render;
 
 const item=e=>`<div class="it" data-id="${e.id}"><div class="ic">${EM[e.cat]||"📦"}</div><div class="m"><div class="t">${esc(e.cat)}</div><div class="d note">${esc(e.note)||"—"} · ${e.date.slice(8)}/${e.date.slice(5,7)} · ${esc(e.mode||"")}</div></div><div class="${e.type==="inc"?"pos":"neg"}">${e.type==="inc"?"+":"-"}${inr(e.amt)}</div></div>`;
@@ -237,17 +244,31 @@ $("ddel").onclick=async()=>{if(confirm("Ye entry hata dein?")){await deleteDoc(d
 // udhar
 const dd=x=>Math.round((new Date(x)-new Date(ymd))/864e5),fmt=x=>x.split("-").reverse().join("/");
 const rem=u=>u.paid?0:Math.max(0,u.amt-(u.got||0)),sr=a=>a.reduce((x,u)=>x+rem(u),0),nk=n=>(n||"").trim().toLowerCase();
-const uItem=u=>{const r=rem(u),d=u.due?dd(u.due):null,g=u.dir==="gave",
-  b=!r?'<span class="bd o">Ho gaya</span>':d===null?"":d<0?`<span class="bd l">${-d} din late</span>`:d===0?'<span class="bd t">Aaj</span>':`<span class="bd o">${d} din baaki</span>`;
-  return `<div class="it" data-u="${u.id}"><div class="ic">${g?"📤":"📥"}</div><div class="m"><div class="t"><span data-n="${esc(nk(u.name))}" style="text-decoration:underline dotted">${esc(u.name)}</span>${b}</div><div class="d note">${g?"Isse lene hain":"Ye dene hain"}${u.due?" · "+fmt(u.due):""}${u.got&&r?` · ${inr(u.got)} ho chuka`:""}${u.note?" · "+esc(u.note):""}</div></div><div style="text-align:right"><div class="${g?"pos":"neg"}">${inr(r)}</div>${r!==u.amt?`<small style="text-decoration:line-through">${inr(u.amt)}</small>`:""}${r?`<br><button class="g" data-p="${u.id}" style="padding:3px 8px;font-size:.75rem;margin-top:3px">${g?"Paise mile":"Paise diye"}</button>`:""}</div></div>`};
+const byDue=(a,b)=>(a.due||"9").localeCompare(b.due||"9");
+const bdg=(u,r)=>{const d=u.due?dd(u.due):null;return !r?'<span class="bd o">Ho gaya</span>':d===null?"":d<0?`<span class="bd l">${-d} din late</span>`:d===0?'<span class="bd t">Aaj</span>':`<span class="bd o">${d} din baaki</span>`};
+const uItem=(u,p)=>{const r=rem(u),g=u.dir==="gave";
+  const t=p?(g?"Maine diye":"Maine liye"):`<span data-n="${esc(nk(u.name))}" style="text-decoration:underline dotted">${esc(u.name)}</span>`;
+  const d=[p?"":g?"Isse lene hain":"Ye dene hain",u.due?fmt(u.due):"",u.got&&r?inr(u.got)+" ho chuka":"",esc(u.note)].filter(Boolean).join(" · ");
+  return `<div class="it" data-u="${u.id}"><div class="ic">${g?"📤":"📥"}</div><div class="m"><div class="t">${t}${bdg(u,r)}</div><div class="d note">${d||"—"}</div></div><div style="text-align:right"><div class="${g?"pos":"neg"}">${inr(r)}</div>${r!==u.amt?`<small style="text-decoration:line-through">${inr(u.amt)}</small>`:""}${r?`<br><button class="g" data-p="${u.id}" style="padding:3px 8px;font-size:.75rem;margin-top:3px">${g?"Paise mile":"Paise diye"}</button>`:""}</div></div>`};
+function people(){const m={};ud.forEach(u=>{const k=nk(u.name);(m[k]=m[k]||{k,n:u.name,L:[]}).L.push(u)});
+  return Object.values(m).map(x=>{const op=x.L.filter(u=>rem(u)>0),get=sr(x.L.filter(u=>u.dir==="gave")),give=sr(x.L.filter(u=>u.dir==="took")),ds=op.filter(u=>u.due).map(u=>u.due).sort();
+    return{...x,op,get,give,net:get-give,due:ds[0]||""}})}
 function renderU(){
-  const op=ud.filter(u=>rem(u)>0).sort((a,b)=>(a.due||"9").localeCompare(b.due||"9")),dn=ud.filter(u=>!rem(u));
-  $("uGet").textContent=inr(sr(op.filter(u=>u.dir==="gave")));$("uGive").textContent=inr(sr(op.filter(u=>u.dir==="took")));
-  $("uOpen").innerHTML=op.map(uItem).join("")||'<p class="note">Koi udhar baaki nahi. + dabake jodo.</p>';
-  $("uDone").innerHTML=dn.slice(0,15).map(uItem).join("")||'<p class="note">Abhi kuch nahi.</p>';
-  $("unames").innerHTML=[...new Set(ud.map(u=>u.name))].map(n=>`<option value="${esc(n)}">`).join("");
-  const due=op.filter(u=>u.due&&u.due<=ymd);$("uHome").hidden=!due.length;$("uHomeL").innerHTML=due.map(uItem).join("");
-  notifyU(due);if($("pdlg").open)renderP();
+  const P=people(),all=ud.filter(u=>rem(u)>0);
+  $("uGet").textContent=inr(sr(all.filter(u=>u.dir==="gave")));$("uGive").textContent=inr(sr(all.filter(u=>u.dir==="took")));
+  $("uPeople").innerHTML=P.sort((a,b)=>(!!b.op.length-!!a.op.length)||byDue(a,b)).map(x=>{const d=x.due?dd(x.due):null;
+    return `<div class="it" data-pk="${esc(x.k)}"><div class="ic" style="font-weight:700">${esc((x.n.trim()[0]||"?").toUpperCase())}</div><div class="m"><div class="t">${esc(x.n)}${d!==null&&d<0?'<span class="bd l">late</span>':d===0?'<span class="bd t">Aaj</span>':""}</div><div class="d note">${x.L.length} entry${x.due?" · agli date "+fmt(x.due):""}</div></div><div style="text-align:right">${x.net>0?`<div class="pos">${inr(x.net)}</div><small>lene hain</small>`:x.net<0?`<div class="neg">${inr(-x.net)}</div><small>dene hain</small>`:"<small>Barabar ✔</small>"}</div></div>`}).join("")||'<p class="note">Abhi koi nahi. "Naya vyakti jodo" dabao.</p>';
+  const due=all.filter(u=>u.due&&u.due<=ymd).sort(byDue);$("uHome").hidden=!due.length;$("uHomeL").innerHTML=due.map(u=>uItem(u)).join("");
+  if(curP){const x=P.find(y=>y.k===curP),L=x?x.L:[],nm=x?x.n:curN,get=x?x.get:0,give=x?x.give:0,net=get-give;
+    $("pWho").textContent=net>0?nm+" se total lene hain":net<0?nm+" ko total dene hain":nm+" – hisaab barabar";
+    $("pAmt").textContent=inr(Math.abs(net));$("uPer").querySelector(".hero").style.background=net<0?"linear-gradient(135deg,#c4452f,#7e2616)":"";
+    $("pSub").textContent=`Lene ${inr(get)} · Dene ${inr(give)} · ${L.length} entry`;
+    $("uOpen").innerHTML=L.filter(u=>rem(u)>0).sort(byDue).map(u=>uItem(u,1)).join("")||'<p class="note">Koi baaki entry nahi. Neeche + dabake jodo.</p>';
+    $("uDone").innerHTML=L.filter(u=>!rem(u)).map(u=>uItem(u,1)).join("")||'<p class="note">Abhi kuch nahi.</p>';
+    const h=L.flatMap(u=>(u.pays||[]).map(y=>({...y,g:u.dir==="gave"}))).sort((a,b)=>b.d.localeCompare(a.d));
+    $("ph").innerHTML=h.length?"<b>Kab kitne mile / diye:</b><br>"+h.map(y=>`${fmt(y.d)} · ${y.g?"mile":"diye"} ${inr(y.a)}`).join("<br>"):"";
+  }
+  $("uList").hidden=!!curP;$("uPer").hidden=!curP;fabVis();notifyU(due);
 }
 async function notifyU(due){
   if(!due.length||!("Notification" in window)||Notification.permission!=="granted"||localStorage.udLast===ymd||VAPID_KEY)return;
@@ -255,42 +276,34 @@ async function notifyU(due){
   const b=[g.length?"Lene hain: "+f(g):"",k.length?"Dene hain: "+f(k):""].filter(Boolean).join(" | ");
   (await navigator.serviceWorker.ready).showNotification("🔔 Aaj udhar ka din",{body:b,icon:"icon-192.png",tag:"udhar"});
 }
-// add / edit udhar
+// vyakti chuno / naya vyakti
+function openP(k,n){curP=k;curN=n;go("udh")}
+$("pback").onclick=()=>{curP=null;render()};
+$("nvb").onclick=()=>{$("nvname").value="";$("nvdlg").showModal()};$("nvcancel").onclick=()=>$("nvdlg").close();
+$("nvgo").onclick=()=>{const n=$("nvname").value.trim();if(!n)return $("nvname").focus();const x=people().find(y=>y.k===nk(n));$("nvdlg").close();openP(nk(n),x?x.n:n)};
+if(!("contacts" in navigator&&"ContactsManager" in window))$("ucon").hidden=true;
+$("ucon").onclick=async()=>{try{const[c]=await navigator.contacts.select(["name"],{multiple:false});if(c&&c.name&&c.name[0])$("nvname").value=c.name[0]}catch(e){}};
+// entry jodo / badlo (naam vyakti ka hi rahega)
 let uEdit=null,uGave=true;
 const setU=g=>{uGave=g;$("ug").classList.toggle("on",g);$("ut").classList.toggle("on",!g)};
 $("ug").onclick=()=>setU(true);$("ut").onclick=()=>setU(false);
-function openU(u){uEdit=u?u.id:null;$("udt").textContent=u?"Udhar badlo":"Naya udhar";setU(!u||u.dir==="gave");$("uname").value=u?u.name:"";$("uamt").value=u?u.amt:"";$("udue").value=u?u.due||"":"";$("unote").value=u?u.note||"":"";$("udel").hidden=!u;$("udlg").showModal()}
+function openU(u){uEdit=u?u.id:null;$("udt").textContent=(u?u.name:curN)+(u?" – entry badlo":" – nayi entry");setU(!u||u.dir==="gave");$("uamt").value=u?u.amt:"";$("udue").value=u?u.due||"":"";$("unote").value=u?u.note||"":"";$("udel").hidden=!u;$("udlg").showModal()}
 $("ucancel").onclick=()=>$("udlg").close();
-if(!("contacts" in navigator&&"ContactsManager" in window))$("ucon").hidden=true;
-$("ucon").onclick=async()=>{try{const[c]=await navigator.contacts.select(["name"],{multiple:false});if(c&&c.name&&c.name[0])$("uname").value=c.name[0]}catch(e){}};
-$("usave").onclick=async()=>{const a=+$("uamt").value,n=$("uname").value.trim();if(!n)return $("uname").focus();if(!(a>0))return $("uamt").focus();
-  const d={name:n,amt:a,dir:uGave?"gave":"took",due:$("udue").value,note:$("unote").value.trim()},c=collection(db,"users",uid,"udhar");
-  if(uEdit){const o=ud.find(x=>x.id===uEdit);d.paid=(o.got||0)>=a;await updateDoc(doc(c,uEdit),d)}else await addDoc(c,{...d,paid:false,got:0,pays:[],at:serverTimestamp()});
+$("usave").onclick=async()=>{const a=+$("uamt").value;if(!(a>0))return $("uamt").focus();
+  const d={amt:a,dir:uGave?"gave":"took",due:$("udue").value,note:$("unote").value.trim()},c=collection(db,"users",uid,"udhar");
+  if(uEdit){const o=ud.find(x=>x.id===uEdit);d.paid=(o.got||0)>=a;await updateDoc(doc(c,uEdit),d)}else await addDoc(c,{...d,name:curN,paid:false,got:0,pays:[],at:serverTimestamp()});
   $("udlg").close()};
 $("udel").onclick=async()=>{if(confirm("Ye poori entry hata dein? (Sirf galti se bani entry ke liye. Paise milne par 'Paise mile' use karo.)")){await deleteDoc(doc(db,"users",uid,"udhar",uEdit));$("udlg").close()}};
-// partial payment
+// aadhe / poore paise
 let payU=null;
 function openPay(u){payU=u;const r=rem(u),g=u.dir==="gave";$("pyt").textContent=g?u.name+" se paise mile":u.name+" ko paise diye";
   $("pyi").textContent=`Total ${inr(u.amt)} · ab tak ${inr(u.got||0)} · baaki ${inr(r)}`;$("pya").value="";$("pya").max=r;$("pyall").textContent="Poore ho gaye ("+inr(r)+")";$("pydlg").showModal()}
 $("pyall").onclick=()=>{$("pya").value=rem(payU)};$("pyc").onclick=()=>$("pydlg").close();
 $("pys").onclick=async()=>{const a=+$("pya").value,r=rem(payU);if(!(a>0))return $("pya").focus();if(a>r)return alert("Baaki sirf "+inr(r)+" hai.");
   const got=(payU.got||0)+a;await updateDoc(doc(db,"users",uid,"udhar",payU.id),{got,paid:got>=payU.amt,pays:[...(payU.pays||[]),{a,d:ymd}]});$("pydlg").close()};
-// person total
-let pKey="";
-function openP(k){pKey=k;renderP();if(!$("pdlg").open)$("pdlg").showModal()}
-function renderP(){
-  const L=ud.filter(u=>nk(u.name)===pKey);if(!L.length){$("pdlg").close();return}
-  const get=sr(L.filter(u=>u.dir==="gave")),give=sr(L.filter(u=>u.dir==="took")),net=get-give,nm=L[0].name;
-  $("pnm").textContent=nm;
-  $("psum").innerHTML=(net>0?`<b>${esc(nm)} se total lene hain: ${inr(net)}</b>`:net<0?`<b>${esc(nm)} ko total dene hain: ${inr(-net)}</b>`:"<b>Hisaab barabar hai</b>")+`<br><small>Lene: ${inr(get)} · Dene: ${inr(give)} · ${L.length} entry</small>`;
-  $("pl").innerHTML=L.sort((a,b)=>(a.due||"9").localeCompare(b.due||"9")).map(uItem).join("");
-  const h=L.flatMap(u=>(u.pays||[]).map(x=>({...x,g:u.dir==="gave"}))).sort((a,b)=>b.d.localeCompare(a.d));
-  $("ph").innerHTML=h.length?"<b>Ab tak:</b><br>"+h.map(x=>`${fmt(x.d)} · ${x.g?"mile":"diye"} ${inr(x.a)}`).join("<br>"):"";
-}
-$("pcl").onclick=()=>$("pdlg").close();
 document.body.addEventListener("click",ev=>{
   const p=ev.target.dataset.p;if(p){openPay(ud.find(x=>x.id===p));return}
-  const n=ev.target.closest("[data-n]");if(n){openP(n.dataset.n);return}
+  const n=ev.target.closest("[data-n],[data-pk]");if(n){const k=n.dataset.n||n.dataset.pk,x=people().find(y=>y.k===k);openP(k,x?x.n:k);return}
   const it=ev.target.closest(".it[data-u]");if(it)openU(ud.find(x=>x.id===it.dataset.u))});
 
 // settings
