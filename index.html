@@ -108,12 +108,23 @@ dialog{border:0;border-radius:18px;background:var(--card);width:min(420px,92vw);
 <dialog id="udlg">
   <h2 id="udt"></h2>
   <div class="seg"><button id="ug" class="on">Maine diye</button><button id="ut">Maine liye</button></div>
-  <label for="uname">Kiska naam</label><input id="uname">
+  <label for="uname">Kiska naam</label><div class="row"><input id="uname" list="unames" autocomplete="off"><button class="g" id="ucon" style="flex:none" aria-label="Contact chuno">📇</button></div><datalist id="unames"></datalist>
   <label for="uamt">Amount (₹)</label><input type="number" id="uamt" min="1" inputmode="decimal">
   <label for="udue">Kab dene / lene ka bola hai</label><input type="date" id="udue">
   <label for="unote">Note</label><input id="unote" placeholder="optional">
   <div class="row" style="margin-top:16px"><button class="g" id="ucancel">Cancel</button><button id="usave">Save</button></div>
   <button class="r" id="udel" style="width:100%;margin-top:6px" hidden>Ye udhar hatao</button>
+</dialog>
+
+<dialog id="pydlg">
+  <h2 id="pyt"></h2><p class="note" id="pyi"></p>
+  <label for="pya">Kitne paise</label><input type="number" id="pya" min="1" inputmode="decimal">
+  <button class="g" id="pyall" style="width:100%;margin-top:8px"></button>
+  <div class="row" style="margin-top:14px"><button class="g" id="pyc">Cancel</button><button id="pys">Save</button></div>
+</dialog>
+<dialog id="pdlg">
+  <h2 id="pnm"></h2><div class="tip" id="psum"></div><div id="pl"></div><p class="note" id="ph"></p>
+  <button class="g" id="pcl" style="width:100%;margin-top:10px">Band karo</button>
 </dialog>
 
 <script type="module">
@@ -224,33 +235,62 @@ $("dsave").onclick=async()=>{const a=+$("damt").value;if(!(a>0))return $("damt")
 $("ddel").onclick=async()=>{if(confirm("Ye entry hata dein?")){await deleteDoc(doc(db,"users",uid,"expenses",editId));$("dlg").close()}};
 
 // udhar
-const dd=x=>Math.round((new Date(x)-new Date(ymd))/864e5);
-const uItem=u=>{const d=u.due?dd(u.due):null,b=u.paid?'<span class="bd o">Ho gaya</span>':d===null?'<span class="bd o">Date nahi</span>':d<0?`<span class="bd l">${-d} din late</span>`:d===0?'<span class="bd t">Aaj</span>':`<span class="bd o">${d} din baaki</span>`,g=u.dir==="gave";
-  return `<div class="it" data-u="${u.id}"><div class="ic">${g?"📤":"📥"}</div><div class="m"><div class="t">${esc(u.name)}${b}</div><div class="d note">${g?"Isse lene hain":"Ye dene hain"}${u.due?" · "+u.due.split("-").reverse().join("/"):""}${u.note?" · "+esc(u.note):""}</div></div><div style="text-align:right"><div class="${g?"pos":"neg"}">${inr(u.amt)}</div>${u.paid?"":`<button class="g" data-p="${u.id}" style="padding:3px 8px;font-size:.75rem;margin-top:3px">${g?"Mil gaya":"Chuka diya"}</button>`}</div></div>`};
+const dd=x=>Math.round((new Date(x)-new Date(ymd))/864e5),fmt=x=>x.split("-").reverse().join("/");
+const rem=u=>u.paid?0:Math.max(0,u.amt-(u.got||0)),sr=a=>a.reduce((x,u)=>x+rem(u),0),nk=n=>(n||"").trim().toLowerCase();
+const uItem=u=>{const r=rem(u),d=u.due?dd(u.due):null,g=u.dir==="gave",
+  b=!r?'<span class="bd o">Ho gaya</span>':d===null?"":d<0?`<span class="bd l">${-d} din late</span>`:d===0?'<span class="bd t">Aaj</span>':`<span class="bd o">${d} din baaki</span>`;
+  return `<div class="it" data-u="${u.id}"><div class="ic">${g?"📤":"📥"}</div><div class="m"><div class="t"><span data-n="${esc(nk(u.name))}" style="text-decoration:underline dotted">${esc(u.name)}</span>${b}</div><div class="d note">${g?"Isse lene hain":"Ye dene hain"}${u.due?" · "+fmt(u.due):""}${u.got&&r?` · ${inr(u.got)} ho chuka`:""}${u.note?" · "+esc(u.note):""}</div></div><div style="text-align:right"><div class="${g?"pos":"neg"}">${inr(r)}</div>${r!==u.amt?`<small style="text-decoration:line-through">${inr(u.amt)}</small>`:""}${r?`<br><button class="g" data-p="${u.id}" style="padding:3px 8px;font-size:.75rem;margin-top:3px">${g?"Paise mile":"Paise diye"}</button>`:""}</div></div>`};
 function renderU(){
-  const op=ud.filter(u=>!u.paid).sort((a,b)=>(a.due||"9").localeCompare(b.due||"9")),dn=ud.filter(u=>u.paid);
-  $("uGet").textContent=inr(sum(op.filter(u=>u.dir==="gave")));$("uGive").textContent=inr(sum(op.filter(u=>u.dir==="took")));
+  const op=ud.filter(u=>rem(u)>0).sort((a,b)=>(a.due||"9").localeCompare(b.due||"9")),dn=ud.filter(u=>!rem(u));
+  $("uGet").textContent=inr(sr(op.filter(u=>u.dir==="gave")));$("uGive").textContent=inr(sr(op.filter(u=>u.dir==="took")));
   $("uOpen").innerHTML=op.map(uItem).join("")||'<p class="note">Koi udhar baaki nahi. + dabake jodo.</p>';
   $("uDone").innerHTML=dn.slice(0,15).map(uItem).join("")||'<p class="note">Abhi kuch nahi.</p>';
-  const due=op.filter(u=>u.due&&u.due<=ymd);$("uHome").hidden=!due.length;$("uHomeL").innerHTML=due.map(uItem).join("");notifyU(due);
+  $("unames").innerHTML=[...new Set(ud.map(u=>u.name))].map(n=>`<option value="${esc(n)}">`).join("");
+  const due=op.filter(u=>u.due&&u.due<=ymd);$("uHome").hidden=!due.length;$("uHomeL").innerHTML=due.map(uItem).join("");
+  notifyU(due);if($("pdlg").open)renderP();
 }
 async function notifyU(due){
   if(!due.length||!("Notification" in window)||Notification.permission!=="granted"||localStorage.udLast===ymd||VAPID_KEY)return;
-  localStorage.udLast=ymd;const g=due.filter(u=>u.dir==="gave"),k=due.filter(u=>u.dir==="took"),f=a=>a.map(u=>u.name+" "+inr(u.amt)).join(", ");
+  localStorage.udLast=ymd;const g=due.filter(u=>u.dir==="gave"),k=due.filter(u=>u.dir==="took"),f=a=>a.map(u=>u.name+" "+inr(rem(u))).join(", ");
   const b=[g.length?"Lene hain: "+f(g):"",k.length?"Dene hain: "+f(k):""].filter(Boolean).join(" | ");
   (await navigator.serviceWorker.ready).showNotification("🔔 Aaj udhar ka din",{body:b,icon:"icon-192.png",tag:"udhar"});
 }
+// add / edit udhar
 let uEdit=null,uGave=true;
 const setU=g=>{uGave=g;$("ug").classList.toggle("on",g);$("ut").classList.toggle("on",!g)};
 $("ug").onclick=()=>setU(true);$("ut").onclick=()=>setU(false);
 function openU(u){uEdit=u?u.id:null;$("udt").textContent=u?"Udhar badlo":"Naya udhar";setU(!u||u.dir==="gave");$("uname").value=u?u.name:"";$("uamt").value=u?u.amt:"";$("udue").value=u?u.due||"":"";$("unote").value=u?u.note||"":"";$("udel").hidden=!u;$("udlg").showModal()}
 $("ucancel").onclick=()=>$("udlg").close();
+if(!("contacts" in navigator&&"ContactsManager" in window))$("ucon").hidden=true;
+$("ucon").onclick=async()=>{try{const[c]=await navigator.contacts.select(["name"],{multiple:false});if(c&&c.name&&c.name[0])$("uname").value=c.name[0]}catch(e){}};
 $("usave").onclick=async()=>{const a=+$("uamt").value,n=$("uname").value.trim();if(!n)return $("uname").focus();if(!(a>0))return $("uamt").focus();
   const d={name:n,amt:a,dir:uGave?"gave":"took",due:$("udue").value,note:$("unote").value.trim()},c=collection(db,"users",uid,"udhar");
-  uEdit?await updateDoc(doc(c,uEdit),d):await addDoc(c,{...d,paid:false,at:serverTimestamp()});$("udlg").close()};
-$("udel").onclick=async()=>{if(confirm("Ye udhar hata dein?")){await deleteDoc(doc(db,"users",uid,"udhar",uEdit));$("udlg").close()}};
-document.body.addEventListener("click",async ev=>{const p=ev.target.dataset.p;
-  if(p){await updateDoc(doc(db,"users",uid,"udhar",p),{paid:true,paidOn:ymd});return}
+  if(uEdit){const o=ud.find(x=>x.id===uEdit);d.paid=(o.got||0)>=a;await updateDoc(doc(c,uEdit),d)}else await addDoc(c,{...d,paid:false,got:0,pays:[],at:serverTimestamp()});
+  $("udlg").close()};
+$("udel").onclick=async()=>{if(confirm("Ye poori entry hata dein? (Sirf galti se bani entry ke liye. Paise milne par 'Paise mile' use karo.)")){await deleteDoc(doc(db,"users",uid,"udhar",uEdit));$("udlg").close()}};
+// partial payment
+let payU=null;
+function openPay(u){payU=u;const r=rem(u),g=u.dir==="gave";$("pyt").textContent=g?u.name+" se paise mile":u.name+" ko paise diye";
+  $("pyi").textContent=`Total ${inr(u.amt)} · ab tak ${inr(u.got||0)} · baaki ${inr(r)}`;$("pya").value="";$("pya").max=r;$("pyall").textContent="Poore ho gaye ("+inr(r)+")";$("pydlg").showModal()}
+$("pyall").onclick=()=>{$("pya").value=rem(payU)};$("pyc").onclick=()=>$("pydlg").close();
+$("pys").onclick=async()=>{const a=+$("pya").value,r=rem(payU);if(!(a>0))return $("pya").focus();if(a>r)return alert("Baaki sirf "+inr(r)+" hai.");
+  const got=(payU.got||0)+a;await updateDoc(doc(db,"users",uid,"udhar",payU.id),{got,paid:got>=payU.amt,pays:[...(payU.pays||[]),{a,d:ymd}]});$("pydlg").close()};
+// person total
+let pKey="";
+function openP(k){pKey=k;renderP();if(!$("pdlg").open)$("pdlg").showModal()}
+function renderP(){
+  const L=ud.filter(u=>nk(u.name)===pKey);if(!L.length){$("pdlg").close();return}
+  const get=sr(L.filter(u=>u.dir==="gave")),give=sr(L.filter(u=>u.dir==="took")),net=get-give,nm=L[0].name;
+  $("pnm").textContent=nm;
+  $("psum").innerHTML=(net>0?`<b>${esc(nm)} se total lene hain: ${inr(net)}</b>`:net<0?`<b>${esc(nm)} ko total dene hain: ${inr(-net)}</b>`:"<b>Hisaab barabar hai</b>")+`<br><small>Lene: ${inr(get)} · Dene: ${inr(give)} · ${L.length} entry</small>`;
+  $("pl").innerHTML=L.sort((a,b)=>(a.due||"9").localeCompare(b.due||"9")).map(uItem).join("");
+  const h=L.flatMap(u=>(u.pays||[]).map(x=>({...x,g:u.dir==="gave"}))).sort((a,b)=>b.d.localeCompare(a.d));
+  $("ph").innerHTML=h.length?"<b>Ab tak:</b><br>"+h.map(x=>`${fmt(x.d)} · ${x.g?"mile":"diye"} ${inr(x.a)}`).join("<br>"):"";
+}
+$("pcl").onclick=()=>$("pdlg").close();
+document.body.addEventListener("click",ev=>{
+  const p=ev.target.dataset.p;if(p){openPay(ud.find(x=>x.id===p));return}
+  const n=ev.target.closest("[data-n]");if(n){openP(n.dataset.n);return}
   const it=ev.target.closest(".it[data-u]");if(it)openU(ud.find(x=>x.id===it.dataset.u))});
 
 // settings
@@ -272,8 +312,8 @@ $("rem").onclick=async()=>{
   if(!("Notification" in window))return alert("Is browser me notification support nahi hai.");
   if(await Notification.requestPermission()!=="granted")return alert("Notification allow karo.");
   const reg=await navigator.serviceWorker.ready;
-  if(VAPID_KEY){try{const tk=await getToken(getMessaging(app),{vapidKey:VAPID_KEY,serviceWorkerRegistration:reg});await setDoc(doc(db,"tokens",tk),{uid,at:serverTimestamp()});alert("Roz shaam 8 baje yaad dilayenge.")}catch(e){alert("Reminder set nahi hua: "+e.message)}}
-  else{localStorage.remOn="1";alert("Reminder on hai (app khula ho tab "+REMIND_TIME+" par).")}
+  if(VAPID_KEY){try{const tk=await getToken(getMessaging(app),{vapidKey:VAPID_KEY,serviceWorkerRegistration:reg});await setDoc(doc(db,"tokens",tk),{uid,at:serverTimestamp()});alert("Ho gaya! Ab app band hone par bhi notification aayegi.")}catch(e){alert("Reminder set nahi hua: "+e.message)}}
+  else{localStorage.remOn="1";alert("Abhi reminder tabhi aayega jab app khula ho. App band hone par bhi chahiye to index.html me VAPID_KEY bharo (steps bataye gaye hain).")}
 };
 setInterval(async()=>{if(localStorage.remOn!=="1"||Notification.permission!=="granted")return;
   const n=new Date(),hm=pad(n.getHours())+":"+pad(n.getMinutes());
